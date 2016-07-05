@@ -88,7 +88,7 @@ def progress_bar(progress, length=20):
 	
 	
 
-def Is_ServerSupportHTTPRange(url, timeout=8):
+def Is_ServerSupportHTTPRange(url, timeout=20):
     '''
     Function checks if a server allows HTTP Range.
     @param url: url address.
@@ -151,7 +151,7 @@ def get_filesize(url):
 
     url = url.replace(' ', '%20')
     try:
-	u = urllib2.urlopen(url, timeout=8)
+	u = urllib2.urlopen(url, timeout=20)
     except (urllib2.HTTPError, urllib2.URLError) as e:
 	logging.error(e)
 	return 0
@@ -202,7 +202,7 @@ if __name__ == '__main__':
 	    headers['Range'] = 'bytes=%d-%d' % (startByte,endByte)
 	req = urllib2.Request(url, headers=headers)
 	try:
-	    urlObj = urllib2.urlopen(req, timeout=8)
+	    urlObj = urllib2.urlopen(req, timeout=20)
 	except urllib2.HTTPError, e:
     
 	    if "HTTP Error 416" in str(e):
@@ -259,7 +259,7 @@ if __name__ == '__main__':
 	    print "\n"
     
 	f.close()
-	#logging.info('writtten file',path)
+	logging.info(path)
 	return path 
     
 
@@ -276,7 +276,7 @@ if __name__ == '__main__':
 	@return pool: Only if nonBlocking is True. A multiprocessing.pool object.
 	'''	
 
-
+	logging.info("URL..." , url)
 	processes=no_thread_per_file
 	path=None;
 	minChunkFile=512**2;
@@ -290,7 +290,7 @@ if __name__ == '__main__':
 		os.makedirs(os.path.dirname(path))
     
 	req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"}); 
-	urlObj = urllib2.urlopen(req, timeout=8)
+	urlObj = urllib2.urlopen(req, timeout=20)
 	meta = urlObj.info()
 	filesize = int(meta.getheaders("Content-Length")[0])
 	tempfilelist=[]
@@ -314,10 +314,7 @@ if __name__ == '__main__':
 		tempfilelist.append(path+".000");
 	
 	print("Running %d processes..." % processes)
-	logging.info("Running %d processes..." % processes)
-      
 	pool2.map(lambda x: DownloadChunk(*x) , args1)
-	
 	while not pool2.tasks.all_tasks_done:
 	    status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (shared_bytes_var.value / 1024.0 / 1024.0,
 		                                          filesize / 1024.0 / 1024.0, progress_bar(1.0*shared_bytes_var.value/filesize),
@@ -342,4 +339,3 @@ if __name__ == '__main__':
     pool.map(download, lines)
     logging.basicConfig(filename='downloader.log',level=logging.DEBUG)
     pool.wait_completion()
-  
