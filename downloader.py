@@ -187,31 +187,6 @@ def get_filesize(url):
 
     return file_size	
     
-def is_ServerSupportHTTPRange(url):
-	'''
-	Function checks if a server allows HTTP Range.
-	@param url: url address.
-	@param timeout: Timeout in seconds.
-	
-	@return bool: Does server support HTTPRange?
-	
-	May raise urllib2.HTTPError, urllib2.URLError.
-	'''
-	url = url.replace(' ', '%20')
-	fullsize = get_filesize(url)
-	print 'fullsize ',fullsize
-	if not fullsize:
-		return False
-	headers={'User-Agent' : "Magic Browser"} 
-	#headers = {'Range': 'bytes=0-3'}
-	req = urllib2.Request(url, headers=headers)
-	urlObj = urllib2.urlopen(req, timeout=8)
-		
-	meta = urlObj.info()
-	filesize = int(meta.getheaders("Content-Length")[0])
-	
-	urlObj.close()
-	return (filesize != fullsize)
      
 def _initProcess(x):
     multiprocessing.dummy.shared_bytes_var = x    
@@ -224,11 +199,12 @@ def get_rand_filename(dir_=os.getcwd()):
 	
 if __name__ == '__main__':
     
-    downloader_no_thread=4
+    no_thread_link=4
+    no_thread_per_file=4
     #Thread pool for handling the images links
-    pool = ThreadPool(downloader_no_thread)
+    pool = ThreadPool(no_thread_link)
     #Thread pool for handling download image chunk file
-    pool2 = ThreadPool(downloader_no_thread)    
+    pool2 = ThreadPool(no_thread_per_file)    
     
 	
 	
@@ -325,7 +301,7 @@ if __name__ == '__main__':
 	'''	
 
 
-	processes=downloader_no_thread
+	processes=no_thread_per_file
 	path=None;
 	minChunkFile=512**2;
 	nonBlocking=False;
@@ -380,7 +356,7 @@ if __name__ == '__main__':
 	return 1	
 
 ###################################################################################################
-    # Instantiate a thread pool with 5 worker threads
+
 
     # Add the jobs in bulk to the thread pool. Alternatively you could use
     # makes it possible to cancel the thread pool with an exception when
