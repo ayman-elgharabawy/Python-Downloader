@@ -27,6 +27,7 @@ import logging
 import copy_reg
 import types
 import multiprocessing
+import logging
 
 
 
@@ -258,7 +259,7 @@ if __name__ == '__main__':
 	    print "\n"
     
 	f.close()
-	logging.info('writtten file',path)
+	#logging.info('writtten file',path)
 	return path 
     
 
@@ -314,7 +315,7 @@ if __name__ == '__main__':
 	
 	print("Running %d processes..." % processes)
 	logging.info("Running %d processes..." % processes)
-
+      
 	pool2.map(lambda x: DownloadChunk(*x) , args1)
 	
 	while not pool2.tasks.all_tasks_done:
@@ -339,10 +340,6 @@ if __name__ == '__main__':
     print 'starting.....';
     lines = [line.rstrip('\n') for line in open('links.txt')]    
     pool.map(download, lines)
-    pool.wait_completion()
-    
-    import logging
     logging.basicConfig(filename='downloader.log',level=logging.DEBUG)
-   
-
-    
+    pool.wait_completion()
+  
