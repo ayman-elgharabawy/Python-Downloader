@@ -32,43 +32,6 @@ import multiprocessing
 
 shared_bytes_var = multiprocessing.Value(c_int, 0) # a ctypes var that counts the bytes already downloaded
 
-def _pickle_method(method):
-    func_name = method.im_func.__name__
-    obj = method.im_self
-    cls = method.im_class
-    if func_name.startswith('__') and not func_name.endswith('__'): #deal with mangled names
-	cls_name = cls.__name__.lstrip('_')
-	func_name = '_' + cls_name + func_name
-    return _unpickle_method, (func_name, obj, cls)
-
-def _unpickle_method(func_name, obj, cls):
-    for cls in cls.__mro__:
-	try:
-	    func = cls.__dict__[func_name]
-	except KeyError:
-	    pass
-	else:
-	    break
-    return func.__get__(obj, cls)
-
-import copy_reg
-import types
-copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
-
-
-def progress_bar(progress, length=20):
-    '''
-    Function creates a textual progress bar.
-    @param progress: Float number between 0 and 1 describes the progress.
-    @param length: The length of the progress bar in chars. Default is 20.
-    '''
-    length -= 2 # The bracket are 2 chars long.
-    return "[" + "#"*int(progress*length) + "-"*(length-int(progress*length)) + "]"
-
-
-
-
-
 
 class Worker(Thread):
     """ Thread executing tasks from a given tasks queue """
@@ -110,7 +73,19 @@ class ThreadPool:
     def wait_completion(self):
 	""" Wait for completion of all the tasks in the queue """
 	self.tasks.join()
+	
+	
 
+def progress_bar(progress, length=20):
+    '''
+    Function creates a textual progress bar.
+    @param progress: Float number between 0 and 1 describes the progress.
+    @param length: The length of the progress bar in chars. Default is 20.
+    '''
+    length -= 2 # The bracket are 2 chars long.
+    return "[" + "#"*int(progress*length) + "-"*(length-int(progress*length)) + "]"
+	
+	
 
 def Is_ServerSupportHTTPRange(url, timeout=8):
     '''
@@ -196,7 +171,7 @@ def get_rand_filename(dir_=os.getcwd()):
     return tempfile.mkstemp('.tmp', '', dir_)[1]
 
 
-	
+################################################################################################################################################	
 if __name__ == '__main__':
     
     no_thread_link=4
@@ -206,8 +181,8 @@ if __name__ == '__main__':
     #Thread pool for handling download image chunk file
     pool2 = ThreadPool(no_thread_per_file)    
     
-	
-	
+#################################### Methods used as a task to be executed by worker ###############################################################
+    
     def DownloadChunk(url, path, startByte=0, endByte=None):
     
 	'''
