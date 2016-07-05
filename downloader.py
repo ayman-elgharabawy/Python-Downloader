@@ -50,6 +50,7 @@ class Worker(Thread):
 	    except Exception as e:
 		# An exception happened in this thread
 		print(e)
+		logging.error(e)
 	    finally:
 		# Mark this task as done, whether an exception happened or not
 		self.tasks.task_done()
@@ -104,7 +105,8 @@ def Is_ServerSupportHTTPRange(url, timeout=20):
     if not fullsize:
 	return False
 
-    headers = {'Range': 'bytes=0-3'}
+    #headers = {'Range': 'bytes=0-3'}
+    headers={'User-Agent' : "Magic Browser"}
     req = urllib2.Request(url, headers=headers)
     urlObj = urllib2.urlopen(req, timeout=timeout)
 
@@ -276,10 +278,10 @@ if __name__ == '__main__':
 	@return pool: Only if nonBlocking is True. A multiprocessing.pool object.
 	'''	
 
-	logging.info("URL..." , url)
+	logging.info(url)
 	processes=no_thread_per_file
 	path=None;
-	minChunkFile=512**2;
+	minChunkFile=1024**2;
 	nonBlocking=False;
 	filename=url.split('/')[-1]
 	shared_bytes_var.value = 0
@@ -314,6 +316,7 @@ if __name__ == '__main__':
 		tempfilelist.append(path+".000");
 	
 	print("Running %d processes..." % processes)
+	logging.info(tempfilelist)
 	pool2.map(lambda x: DownloadChunk(*x) , args1)
 	while not pool2.tasks.all_tasks_done:
 	    status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (shared_bytes_var.value / 1024.0 / 1024.0,
@@ -329,13 +332,12 @@ if __name__ == '__main__':
 	return 1	
 
 ###################################################################################################
-
-
-    # Add the jobs in bulk to the thread pool. Alternatively you could use
-    # makes it possible to cancel the thread pool with an exception when
-    # the currently running batch of workers is finished.
+    logging.basicConfig(filename='downloader.log',level=logging.DEBUG)    
     print 'starting.....';
+    logging.info('Starting..');
     lines = [line.rstrip('\n') for line in open('links.txt')]    
     pool.map(download, lines)
-    logging.basicConfig(filename='downloader.log',level=logging.DEBUG)
     pool.wait_completion()
+   
+
+    
