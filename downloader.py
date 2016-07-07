@@ -4,7 +4,6 @@ from StringIO import StringIO
 import time
 import os
 import urllib2
-import time
 import multiprocessing
 import string
 from random import choice
@@ -13,18 +12,14 @@ from ctypes import c_int
 import tempfile
 import socket
 import thread
-import time
 from time import sleep
-from csv import DictReader
 from Queue import Queue
 from threading import Thread
 from functools import partial
 import pickle
 import itertools
 from multiprocessing import Pool
-import time
 import logging 
-import copy_reg
 import types
 import multiprocessing
 import logging
@@ -122,7 +117,14 @@ def combine_files(parts, path):
     @param parts: List of file paths.
     @param path: Destination path.
     '''
-    with open(path,'wb') as output:
+    destination='downloaded/'+path
+    if not os.path.exists(os.path.dirname(destination)):
+	try:
+	    os.makedirs(os.path.dirname(destination))
+	except OSError as exc: # Guard against race condition
+	    if exc.errno != errno.EEXIST:
+		raise    
+    with open(destination,'wb') as output:
 	for part in parts:
 	    with open(part,'rb') as f:
 		output.writelines(f.readlines())
@@ -338,6 +340,4 @@ if __name__ == '__main__':
     lines = [line.rstrip('\n') for line in open('links.txt')]    
     pool.map(download, lines)
     pool.wait_completion()
-   
-
-    
+  
