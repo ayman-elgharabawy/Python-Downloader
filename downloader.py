@@ -359,7 +359,6 @@ if __name__ == '__main__':
     logging.basicConfig(filename=logfile,level=logging.DEBUG)
     with open(logfile, 'w'):
 	pass
-    shutil.rmtree('downloaded')
     print 'starting.....';
     logging.info('Starting..');
     download_counter=0
