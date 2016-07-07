@@ -9,6 +9,7 @@ from StringIO import StringIO
 import time
 import os
 import urllib2
+import shutil
 import multiprocessing
 import string
 from random import choice
@@ -357,7 +358,8 @@ if __name__ == '__main__':
     logfile='downloader.log'
     logging.basicConfig(filename=logfile,level=logging.DEBUG)
     with open(logfile, 'w'):
-	pass    
+	pass
+    shutil.rmtree('downloaded')
     print 'starting.....';
     logging.info('Starting..');
     download_counter=0
