@@ -1,4 +1,9 @@
 
+''' 
+Created on July 7, 2016
+
+@author: Ayman Elgharabawy
+'''
 from multiprocessing import Pool, TimeoutError
 from StringIO import StringIO
 import time
@@ -170,9 +175,17 @@ def get_filesize(url):
 def _initProcess(x):
     multiprocessing.dummy.shared_bytes_var = x    
 
-def get_rand_filename(dir_=os.getcwd()):  
+def get_rand_filename(dir_=os.getcwd()):
+    global  templist
     #"Function returns a non-existent random filename."
-    return tempfile.mkstemp('.tmp', '', dir_)[1]
+    name=tempfile.mkstemp('.tmp', '', dir_)[1]
+    if name in templist:
+	 #os.path.exists(os.environ['temp']+name):
+	print 'it happend...',name
+	logging.info("it happend... "+name)
+	get_rand_filename(os.environ['temp'])
+    templist.append(name)	
+    return name
 
 @retry(stop_max_attempt_number=7)
 def urlopen_with_retry(url):
@@ -185,7 +198,7 @@ if __name__ == '__main__':
     no_thread_per_file=4
     #Thread pool for handling the images links
     pool = ThreadPool(no_thread_link)
-    #Thread pool for handling download image chunk file
+
       
     
 #################################### Methods used as a task to be executed by worker ###############################################################
@@ -252,7 +265,11 @@ if __name__ == '__main__':
 		shared_bytes_var.value += len(buff)
 	    except AttributeError:
 		pass
-	    f.write(buff)
+	    try:
+	        f.write(buff)
+	    except:
+		f.close()
+	        DownloadChunk(url, path, startByte, endByte, ShowProgress)
     
 	    if ShowProgress:
 		status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (filesize_dl / 1024.0 / 1024.0,
@@ -319,6 +336,7 @@ if __name__ == '__main__':
 	print 'Downloading... ',url
 	logging.info(url)
 	logging.info(tempfilelist)
+	#Thread pool for handling download image chunk file
 	pool2 = ThreadPool(no_thread_per_file)
 	pool2.map(lambda x: DownloadChunk(*x) , args1)
 	while not pool2.tasks.all_tasks_done:
@@ -336,10 +354,14 @@ if __name__ == '__main__':
 	return 1	
 
 ###################################################################################################
-    logging.basicConfig(filename='downloader.log',level=logging.DEBUG)    
+    logfile='downloader.log'
+    logging.basicConfig(filename=logfile,level=logging.DEBUG)
+    with open(logfile, 'w'):
+	pass    
     print 'starting.....';
     logging.info('Starting..');
     download_counter=0
+    templist=[]
     lines = [line.rstrip('\n') for line in open('links.txt')]    
     pool.map(download, lines)
     pool.wait_completion()
