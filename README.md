@@ -1,11 +1,11 @@
 # Python-Downloader
 
-# you have to download retying package 
+You have to download retying package 
 
-pip install 
+pip install retrying
 
 
-#Algorithm:
+##Algorithm:
 
 the program has a thread of pool to the links
 
