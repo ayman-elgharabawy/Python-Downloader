@@ -1,0 +1,214 @@
+
+''' 
+Created on July 7, 2016
+
+@author: Ayman Elgharabawy
+'''
+from multiprocessing import Pool, TimeoutError
+from StringIO import StringIO
+import time
+import os
+import urllib2
+import shutil
+import multiprocessing
+import string
+from random import choice
+import socket
+from ctypes import c_int
+import tempfile
+import thread
+from time import sleep
+from Queue import Queue
+from threading import Thread
+import itertools
+from multiprocessing import Pool
+import logging 
+import types
+import multiprocessing
+import random
+from retrying import retry
+from classes.DownloaderHelper import DownloaderHelper
+from classes.ThreadPool import ThreadPool
+from classes.Worker import Worker
+import settings
+
+shared_bytes_var = multiprocessing.Value(c_int, 0) # a ctypes var that counts the bytes already downloaded
+
+
+logfile='downloader.log'
+################################################################################################################################################	
+if __name__ == '__main__':
+
+
+#################################### Methods used as a task to be executed by worker ###############################################################
+
+    def DownloadChunk(url, path, startByte=0, endByte=None):
+
+        '''
+	    Function downloads file.
+	    @param url: File url address.
+	    @param path: Destination file path.
+	    @param startByte: Start byte.
+	    @param endByte: End byte. Will work only if server supports HTTPRange headers.
+	    @return path: Destination file path.
+	     '''
+
+        ShowProgress=True
+        url = url.replace(' ', '%20')
+        headers={'User-Agent' : "Magic Browser"}
+        if endByte is not None:
+            headers['Range'] = 'bytes=%d-%d' % (startByte,endByte)
+        req = urllib2.Request(url, headers=headers)
+        try:
+            urlObj = DownloaderHelper.urlopen_with_retry(req)
+        except urllib2.HTTPError, e:
+
+            if "HTTP Error 416" in str(e):
+                # HTTP 416 Error: Requested Range Not Satisfiable. Happens when we ask
+                # for a range that is not available on the server. It will happen when
+                # the server will try to send us a .html page that means something like
+                # "you opened too many connections to our server". If this happens, we
+                # will wait for the other threads to finish their connections and try again.
+
+                #log.warning("Thread didn't got the file it was expecting. Retrying...")
+                print("Thread didn't got the file it was expecting. Retrying...")
+                time.sleep(5)
+                return DownloadChunk(url, path, startByte, endByte, ShowProgress)
+            else:
+                raise e
+
+        f = open(path, 'wb')
+        meta = urlObj.info()
+        try:	
+            filesize = int(meta.getheaders("Content-Length")[0])
+        except IndexError:
+            print("Server did not send Content-Length.")
+            logging.error("Server did not send Content-Length.")
+            ShowProgress=False
+
+        filesize_dl = 0
+        block_sz = 8192
+        while True:
+
+            try:
+                buff = urlObj.read(block_sz)
+            except (socket.timeout, socket.error, urllib2.HTTPError), e:
+                shared_bytes_var.value -= filesize_dl
+                raise e
+
+            if not buff:
+                break
+
+            filesize_dl += len(buff)
+            try:
+                shared_bytes_var.value += len(buff)
+            except AttributeError:
+                pass
+            try:
+                f.write(buff)
+            except:
+                f.close()
+                DownloadChunk(url, path, startByte, endByte, ShowProgress)
+
+            if ShowProgress:
+                status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (filesize_dl / 1024.0 / 1024.0,
+                                                              filesize / 1024.0 / 1024.0, DownloaderHelper.progress_bar(1.0*filesize_dl/filesize),
+                                                              filesize_dl * 100.0 / filesize)
+                status += chr(8)*(len(status)+1)
+                print status,	
+
+        if ShowProgress:
+            print "\n"
+
+        f.close()
+        logging.info(path)
+        return path 
+
+
+
+    def download(url):
+        '''
+        Function downloads file parally.
+        @param url: File url address.
+        @param path: Destination file path.
+
+        @param minChunkFile: Minimum chunk file in bytes.
+
+        @return mapObj: Only if nonBlocking is True. A multiprocessing.pool.AsyncResult object.
+        @return pool: Only if nonBlocking is True. A multiprocessing.pool object.
+        '''	
+        processes=no_thread_per_file
+        path=None;
+        minChunkFile=1024**2;
+        nonBlocking=False;
+        filename=url.split('/')[-1]
+        shared_bytes_var.value = 0
+        url = url.replace(' ', '%20')
+        if not path:
+            path = DownloaderHelper.get_rand_filename(os.environ['temp'])
+            if not os.path.exists(os.path.dirname(path)):
+                os.makedirs(os.path.dirname(path))
+
+        req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser","Connection": "keep-alive"});
+        urlObj = DownloaderHelper.urlopen_with_retry(req)
+        meta = urlObj.info()
+        filesize = int(meta.getheaders("Content-Length")[0])
+
+
+        if( filesize/processes > minChunkFile) and DownloaderHelper.Is_ServerSupportHTTPRange(url):
+            args1 = []
+            tempfilelist=[]
+            pos = 0
+            chunk = filesize/processes
+            for i in range(processes):
+                startByte = pos
+                endByte = pos + chunk
+                if endByte > filesize-1:
+                    endByte = filesize-1 
+                args1.append([url, path+".%.3d" % i, startByte, endByte])
+                tempfilelist.append(path+".%.3d" % i);
+                pos += chunk+1
+        else:
+            args1 = [[url, path+".000", None, None]]
+            tempfilelist=[path+".000"];
+
+        print 'Downloading... ',url
+        logging.info(url)
+        logging.info(tempfilelist)
+        #Thread pool for handling download image chunk file
+        pool2 = ThreadPool(no_thread_per_file)
+        pool2.map(lambda x: DownloadChunk(*x) , args1)
+        while not pool2.tasks.all_tasks_done:
+            status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (shared_bytes_var.value / 1024.0 / 1024.0,
+                                                          filesize / 1024.0 / 1024.0, DownloaderHelper.progress_bar(1.0*shared_bytes_var.value/filesize),
+                                                          shared_bytes_var.value * 100.0 / filesize)
+            status = status + chr(8)*(len(status)+1)
+            print status,
+            time.sleep(0.1)
+
+
+        file_parts = tempfilelist
+        pool2.wait_completion()
+        DownloaderHelper.combine_files(file_parts, filename)
+        return 1	
+
+#############################Main Method######################################################################
+
+
+    settings.init()
+    no_thread_link=4
+    no_thread_per_file=4
+    #Thread pool for handling the images links
+    pool = ThreadPool(no_thread_link)
+    logging.basicConfig(filename=logfile,level=logging.DEBUG)
+    with open(logfile, 'w'):
+        pass
+    if os.path.exists(settings.DownloadedFolder):
+        shutil.rmtree(settings.DownloadedFolder)
+    print 'starting.....';
+    logging.info('Starting..');
+    lines = [line.rstrip('\n') for line in open('links.txt')]    
+    pool.map(download, lines)
+    pool.wait_completion()
+    print 'Total files downloaded',settings.download_counter
+    logging.info('Total files downloaded %d',settings.download_counter)    
