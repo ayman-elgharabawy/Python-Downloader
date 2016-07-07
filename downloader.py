@@ -19,6 +19,8 @@ from multiprocessing import Pool
 import logging 
 import types
 import multiprocessing
+import random
+from retrying import retry
 
 
 
@@ -98,7 +100,7 @@ def Is_ServerSupportHTTPRange(url, timeout=20):
     #headers = {'Range': 'bytes=0-3'}
     headers={'User-Agent' : "Magic Browser"}
     req = urllib2.Request(url, headers=headers)
-    urlObj = urllib2.urlopen(req, timeout=timeout)
+    urlObj = urlopen_with_retry(req)
 
     meta = urlObj.info()
     filesize = int(meta.getheaders("Content-Length")[0])
@@ -152,7 +154,7 @@ def get_filesize(url):
 
     url = url.replace(' ', '%20')
     try:
-	u = urllib2.urlopen(url, timeout=20)
+	u = urlopen_with_retry(url)
     except (urllib2.HTTPError, urllib2.URLError) as e:
 	logging.error(e)
 	return 0
@@ -172,6 +174,9 @@ def get_rand_filename(dir_=os.getcwd()):
     #"Function returns a non-existent random filename."
     return tempfile.mkstemp('.tmp', '', dir_)[1]
 
+@retry(stop_max_attempt_number=7)
+def urlopen_with_retry(url):
+    return urllib2.urlopen(url,timeout=20)
 
 ################################################################################################################################################	
 if __name__ == '__main__':
@@ -203,7 +208,7 @@ if __name__ == '__main__':
 	    headers['Range'] = 'bytes=%d-%d' % (startByte,endByte)
 	req = urllib2.Request(url, headers=headers)
 	try:
-	    urlObj = urllib2.urlopen(req, timeout=20)
+	    urlObj = urlopen_with_retry(req)
 	except urllib2.HTTPError, e:
     
 	    if "HTTP Error 416" in str(e):
@@ -276,8 +281,6 @@ if __name__ == '__main__':
 	@return mapObj: Only if nonBlocking is True. A multiprocessing.pool.AsyncResult object.
 	@return pool: Only if nonBlocking is True. A multiprocessing.pool object.
 	'''	
-
-	logging.info(url)
 	processes=no_thread_per_file
 	path=None;
 	minChunkFile=1024**2;
@@ -291,7 +294,7 @@ if __name__ == '__main__':
 		os.makedirs(os.path.dirname(path))
     
 	req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser","Connection": "keep-alive"});
-	urlObj = urllib2.urlopen(req, timeout=20)
+	urlObj = urlopen_with_retry(req)
 	meta = urlObj.info()
 	filesize = int(meta.getheaders("Content-Length")[0])
     
@@ -313,7 +316,8 @@ if __name__ == '__main__':
 		args1 = [[url, path+".000", None, None]]
 		tempfilelist=[path+".000"];
 	
-	print('Downloading... ',url)
+	print 'Downloading... ',url
+	logging.info(url)
 	logging.info(tempfilelist)
 	pool2 = ThreadPool(no_thread_per_file)
 	pool2.map(lambda x: DownloadChunk(*x) , args1)
