@@ -10,24 +10,19 @@ from random import choice
 import socket
 from ctypes import c_int
 import tempfile
-import socket
 import thread
 from time import sleep
 from Queue import Queue
 from threading import Thread
-from functools import partial
-import pickle
 import itertools
 from multiprocessing import Pool
 import logging 
 import types
 import multiprocessing
-import logging
 
 
 
 shared_bytes_var = multiprocessing.Value(c_int, 0) # a ctypes var that counts the bytes already downloaded
-
 
 class Worker(Thread):
     """ Thread executing tasks from a given tasks queue """
@@ -117,6 +112,7 @@ def combine_files(parts, path):
     @param parts: List of file paths.
     @param path: Destination path.
     '''
+    global download_counter
     destination='downloaded/'+path
     if not os.path.exists(os.path.dirname(destination)):
 	try:
@@ -127,8 +123,9 @@ def combine_files(parts, path):
     with open(destination,'wb') as output:
 	for part in parts:
 	    with open(part,'rb') as f:
-		output.writelines(f.readlines())
+		output.writelines(f.readlines())	
 	    os.remove(part)
+    download_counter+=1	    
 
 
 
@@ -184,7 +181,7 @@ if __name__ == '__main__':
     #Thread pool for handling the images links
     pool = ThreadPool(no_thread_link)
     #Thread pool for handling download image chunk file
-    pool2 = ThreadPool(no_thread_per_file)    
+      
     
 #################################### Methods used as a task to be executed by worker ###############################################################
     
@@ -239,7 +236,7 @@ if __name__ == '__main__':
 	    try:
 		buff = urlObj.read(block_sz)
 	    except (socket.timeout, socket.error, urllib2.HTTPError), e:
-		multiprocessing.dummy.shared_bytes_var.value -= filesize_dl
+		shared_bytes_var.value -= filesize_dl
 		raise e
     
 	    if not buff:
@@ -247,7 +244,7 @@ if __name__ == '__main__':
     
 	    filesize_dl += len(buff)
 	    try:
-		multiprocessing.dummy.shared_bytes_var.value += len(buff)
+		shared_bytes_var.value += len(buff)
 	    except AttributeError:
 		pass
 	    f.write(buff)
@@ -293,16 +290,15 @@ if __name__ == '__main__':
 	    if not os.path.exists(os.path.dirname(path)):
 		os.makedirs(os.path.dirname(path))
     
-	req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"}); 
+	req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser","Connection": "keep-alive"});
 	urlObj = urllib2.urlopen(req, timeout=20)
 	meta = urlObj.info()
 	filesize = int(meta.getheaders("Content-Length")[0])
-	tempfilelist=[]
     
 	
 	if( filesize/processes > minChunkFile) and Is_ServerSupportHTTPRange(url):
 	    args1 = []
-
+            tempfilelist=[]
 	    pos = 0
 	    chunk = filesize/processes
 	    for i in range(processes):
@@ -315,10 +311,11 @@ if __name__ == '__main__':
 		pos += chunk+1
 	else:
 		args1 = [[url, path+".000", None, None]]
-		tempfilelist.append(path+".000");
+		tempfilelist=[path+".000"];
 	
-	print("Running %d processes..." % processes)
+	print('Downloading... ',url)
 	logging.info(tempfilelist)
+	pool2 = ThreadPool(no_thread_per_file)
 	pool2.map(lambda x: DownloadChunk(*x) , args1)
 	while not pool2.tasks.all_tasks_done:
 	    status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (shared_bytes_var.value / 1024.0 / 1024.0,
@@ -327,9 +324,10 @@ if __name__ == '__main__':
 	    status = status + chr(8)*(len(status)+1)
 	    print status,
 	    time.sleep(0.1)
-	pool2.wait_completion()
 	
+
 	file_parts = tempfilelist
+	pool2.wait_completion()
 	combine_files(file_parts, filename)
 	return 1	
 
@@ -337,7 +335,9 @@ if __name__ == '__main__':
     logging.basicConfig(filename='downloader.log',level=logging.DEBUG)    
     print 'starting.....';
     logging.info('Starting..');
+    download_counter=0
     lines = [line.rstrip('\n') for line in open('links.txt')]    
     pool.map(download, lines)
     pool.wait_completion()
-  
+    print 'Total files downloaded',download_counter
+    logging.info('Total files downloaded %d',download_counter)
