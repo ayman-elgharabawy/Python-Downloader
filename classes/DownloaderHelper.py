@@ -90,7 +90,7 @@ class DownloaderHelper(object):
                 with open(part,'rb') as f:
                     output.writelines(f.readlines())	
                 os.remove(part)
-        settings.download_counter+=1	    
+        	    
     
     
     @staticmethod
