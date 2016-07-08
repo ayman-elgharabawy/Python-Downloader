@@ -60,7 +60,7 @@ def DownloadChunk(url, path, startByte=0, endByte=None):
             #log.warning("Thread didn't got the file it was expecting. Retrying...")
             print("Thread didn't got the file it was expecting. Retrying...")
             time.sleep(5)
-            return DownloadChunk(url, path, startByte, endByte, ShowProgress)
+            return DownloadChunk(url, path, startByte, endByte)
         else:
             raise e
 
@@ -81,7 +81,11 @@ def DownloadChunk(url, path, startByte=0, endByte=None):
             buff = urlObj.read(block_sz)
         except (socket.timeout, socket.error, urllib2.HTTPError), e:
             settings.shared_bytes_var.value -= filesize_dl
+            print 'Retrying to read the file..' 
+            time.sleep(5)
+            DownloadChunk(url, path, startByte, endByte)             
             raise e
+ 
 
         if not buff:
             break
@@ -95,7 +99,8 @@ def DownloadChunk(url, path, startByte=0, endByte=None):
             f.write(buff)
         except:
             f.close()
-            DownloadChunk(url, path, startByte, endByte, ShowProgress)
+            print 'Retrying to read the file..' 
+            DownloadChunk(url, path, startByte, endByte)
 
         if ShowProgress:
             status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (filesize_dl / 1024.0 / 1024.0,
@@ -176,5 +181,6 @@ def download(url):
 
     file_parts = tempfilelist
     pool2.wait_completion()
+    settings.download_counter+=1
     DownloaderHelper.combine_files(file_parts, filename)
     return 1
