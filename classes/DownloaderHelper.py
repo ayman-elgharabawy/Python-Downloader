@@ -141,7 +141,9 @@ class DownloaderHelper(object):
         name=tempfile.mkstemp('.tmp', '', dir_)[1]
         if name in settings.templist:
                 #os.path.exists(os.environ['temp']+name):
-            self.get_rand_filename(os.environ['temp'])
+            print 'Random name already exist by another process .. choosing another name.'
+            logging.info('Random name already exist by another process .. choosing another name.')
+            get_rand_filename(os.environ['temp'])
         settings.templist.append(name)	
         return name
     
