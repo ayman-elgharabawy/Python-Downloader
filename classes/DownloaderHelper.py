@@ -56,14 +56,14 @@ class DownloaderHelper(object):
         '''
         url = url.replace(' ', '%20')
     
-        fullsize = self.get_filesize(url)
+        fullsize = DownloaderHelper.get_filesize(url)
         if not fullsize:
             return False
     
         #headers = {'Range': 'bytes=0-3'}
         headers={'User-Agent' : "Magic Browser"}
         req = urllib2.Request(url, headers=headers)
-        urlObj = urlopen_with_retry(req)
+        urlObj = DownloaderHelper.urlopen_with_retry(req)
     
         meta = urlObj.info()
         filesize = int(meta.getheaders("Content-Length")[0])
@@ -118,7 +118,7 @@ class DownloaderHelper(object):
     
         url = url.replace(' ', '%20')
         try:
-            u = urlopen_with_retry(url)
+            u = DownloaderHelper.urlopen_with_retry(url)
         except (urllib2.HTTPError, urllib2.URLError) as e:
             logging.error(e)
             return 0
