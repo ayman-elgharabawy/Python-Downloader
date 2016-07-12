@@ -134,6 +134,7 @@ def download(url):
     @return pool: Only if nonBlocking is True. A multiprocessing.pool object.
     '''	
     processes=settings.no_thread_per_file
+
     path=None;
     minChunkFile=1024**2;
     nonBlocking=False;
@@ -172,7 +173,8 @@ def download(url):
     logging.info(url)
     logging.info(tempfilelist)
     #Thread pool for handling download image chunk file
-    pool2 = ThreadPool(settings.no_thread_per_file)
+    
+    pool2 = ThreadPool(len(tempfilelist))
     pool2.map(lambda x: DownloadChunk(*x) , args1)
     while not pool2.tasks.all_tasks_done:
         settings.status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (settings.shared_bytes_var.value / 1024.0 / 1024.0,
