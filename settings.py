@@ -10,10 +10,12 @@ import multiprocessing
 from ctypes import c_int
 import types
 import multiprocessing
+import urllib2
 
 
 def init():
-     
+    global status
+    status=''
     global DownloadedFolder
     DownloadedFolder='downloaded'
     global templist

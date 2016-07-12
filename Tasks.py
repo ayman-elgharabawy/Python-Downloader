@@ -39,8 +39,8 @@ def DownloadChunk(url, path, startByte=0, endByte=None):
         @param endByte: End byte. Will work only if server supports HTTPRange headers.
         @return path: Destination file path.
          '''
-
-    ShowProgress=True
+    remotename=url.split('/')[-1]
+    filename=path.split('\\')[-1]
     url = url.replace(' ', '%20')
     headers={'User-Agent' : "Magic Browser"}
     if endByte is not None:
@@ -58,10 +58,13 @@ def DownloadChunk(url, path, startByte=0, endByte=None):
             # will wait for the other threads to finish their connections and try again.
 
             #log.warning("Thread didn't got the file it was expecting. Retrying...")
-            print("Thread didn't got the file it was expecting. Retrying...")
+            print "\n"
+            print "Thread didn't got the file it was expecting. Retrying..."           
             time.sleep(5)
             return DownloadChunk(url, path, startByte, endByte)
         else:
+            print "\n"
+            print e            
             raise e
 
     f = open(path, 'wb')
@@ -69,7 +72,8 @@ def DownloadChunk(url, path, startByte=0, endByte=None):
     try:	
         filesize = int(meta.getheaders("Content-Length")[0])
     except IndexError:
-        print("Server did not send Content-Length.")
+        print "\n"
+        print"Server did not send Content-Length."   
         logging.error("Server did not send Content-Length.")
         ShowProgress=False
 
@@ -81,7 +85,8 @@ def DownloadChunk(url, path, startByte=0, endByte=None):
             buff = urlObj.read(block_sz)
         except (socket.timeout, socket.error, urllib2.HTTPError), e:
             settings.shared_bytes_var.value -= filesize_dl
-            print 'Retrying to read the file..' 
+            print "\n"
+            print 'Retrying to download chunk file..'
             time.sleep(5)
             DownloadChunk(url, path, startByte, endByte)             
             raise e
@@ -94,24 +99,23 @@ def DownloadChunk(url, path, startByte=0, endByte=None):
         try:
             settings.shared_bytes_var.value += len(buff)
         except AttributeError:
+            print AttributeError
             pass
         try:
             f.write(buff)
         except:
             f.close()
-            print 'Retrying to read the file..' 
+            print "\n"
+            print 'Retrying to download chunk file..' 
             DownloadChunk(url, path, startByte, endByte)
 
-        if ShowProgress:
-            status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (filesize_dl / 1024.0 / 1024.0,
-                                                          filesize / 1024.0 / 1024.0, DownloaderHelper.progress_bar(1.0*filesize_dl/filesize),
-                                                          filesize_dl * 100.0 / filesize)
-            status += chr(8)*(len(status)+1)
-            print status,	
-
-    if ShowProgress:
-        print "\n"
-
+        
+        settings.status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (filesize_dl / 1024.0 / 1024.0,
+                                                           filesize / 1024.0 / 1024.0, DownloaderHelper.progress_bar(1.0*filesize_dl/filesize,remotename if (filesize_dl * 100.0 / filesize==100) else filename),
+                                                           filesize_dl * 100.0 / filesize)
+        settings.status += chr(8)*(len(settings.status)+1)
+        print settings.status,	
+    print "\n"
     f.close()
     logging.info(path)
     return path 
@@ -164,18 +168,18 @@ def download(url):
         args1 = [[url, path+".000", None, None]]
         tempfilelist=[path+".000"];
 
-    print 'Downloading... ',url
+    #print 'Downloading... ',filename
     logging.info(url)
     logging.info(tempfilelist)
     #Thread pool for handling download image chunk file
     pool2 = ThreadPool(settings.no_thread_per_file)
     pool2.map(lambda x: DownloadChunk(*x) , args1)
     while not pool2.tasks.all_tasks_done:
-        status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (settings.shared_bytes_var.value / 1024.0 / 1024.0,
-                                                      filesize / 1024.0 / 1024.0, DownloaderHelper.progress_bar(1.0*settings.shared_bytes_var.value/filesize),
+        settings.status = r"%.2f MB / %.2f MB %s [%3.2f%%]" % (settings.shared_bytes_var.value / 1024.0 / 1024.0,
+                                                      filesize / 1024.0 / 1024.0, DownloaderHelper.progress_bar(1.0*settings.shared_bytes_var.value/filesize ,filename),
                                                      settings.shared_bytes_var.value * 100.0 / filesize)
-        status = status + chr(8)*(len(status)+1)
-        print status,
+        settings.status = settings.status + chr(8)*(len(settings.status)+1)
+        print settings.status,
         time.sleep(0.1)
 
 

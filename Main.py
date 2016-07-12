@@ -49,7 +49,7 @@ if __name__ == '__main__':
         shutil.rmtree(settings.DownloadedFolder)
     print 'starting.....';
     logging.info('Starting..');
-    lines = [line.rstrip('\n') for line in open('links.txt')]    
+    lines = [line.rstrip('\n') for line in open('links.txt')]
     pool.map(Tasks.download, lines)
     pool.wait_completion()
     print 'Total files downloaded',settings.download_counter

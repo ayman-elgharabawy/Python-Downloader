@@ -8,11 +8,13 @@ from multiprocessing import Pool, TimeoutError
 from StringIO import StringIO
 import time
 import os
+import httplib
 import urllib2
 import shutil
 import multiprocessing
 import string
 from random import choice
+import urllib
 import socket
 from ctypes import c_int
 import tempfile
@@ -33,14 +35,14 @@ import settings
 class DownloaderHelper(object):
     
     @staticmethod
-    def progress_bar(progress, length=20):
+    def progress_bar(progress,filename, length=20):
         '''
         Function creates a textual progress bar.
         @param progress: Float number between 0 and 1 describes the progress.
         @param length: The length of the progress bar in chars. Default is 20.
         '''
         length -= 2 # The bracket are 2 chars long.
-        return "[" + "#"*int(progress*length) + "-"*(length-int(progress*length)) + "]"
+        return "[" + "#"*int(progress*length) + "-"*(length-int(progress*length)) + "] ....... "+filename
     
     
     @staticmethod
@@ -84,6 +86,7 @@ class DownloaderHelper(object):
                 os.makedirs(os.path.dirname(destination))
             except OSError as exc: # Guard against race condition
                 if exc.errno != errno.EEXIST:
+                    print "\n"
                     raise    
         with open(destination,'wb') as output:
             for part in parts:
@@ -92,6 +95,13 @@ class DownloaderHelper(object):
                 os.remove(part)
         	    
     
+    @staticmethod
+    def getDownloadSize(url):
+        req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser","Connection": "keep-alive"});
+        urlObj = DownloaderHelper.urlopen_with_retry(req)
+        meta = urlObj.info()
+        filesize = int(meta.getheaders("Content-Length")[0])
+        return filesize
     
     @staticmethod
     def createFilename(url, name, folder):
@@ -121,11 +131,14 @@ class DownloaderHelper(object):
             u = DownloaderHelper.urlopen_with_retry(url)
         except (urllib2.HTTPError, urllib2.URLError) as e:
             logging.error(e)
+            print "\n"
+            print e
             return 0
         meta = u.info()
         try:
             file_size = int(meta.getheaders("Content-Length")[0])
         except IndexError:
+            print "\n"
             return 0
     
         return file_size	
@@ -141,6 +154,7 @@ class DownloaderHelper(object):
         name=tempfile.mkstemp('.tmp', '', dir_)[1]
         if name in settings.templist:
                 #os.path.exists(os.environ['temp']+name):
+            print "\n"
             print 'Random name already exist by another process .. choosing another name.'
             logging.info('Random name already exist by another process .. choosing another name.')
             get_rand_filename(os.environ['temp'])
@@ -150,4 +164,13 @@ class DownloaderHelper(object):
     @staticmethod
     @retry(stop_max_attempt_number=7)
     def urlopen_with_retry(url):
-        return urllib2.urlopen(url,timeout=20)    
+    
+       # opener = urllib2.build_opener(ConnectHTTPHandler, ConnectHTTPSHandler)
+       # urllib2.install_opener(opener)
+       # req = urllib2.Request(url)
+       # return urllib2.urlopen(req)#urllib2.urlopen(url,timeout=20 ) 
+       
+
+
+        return urllib2.urlopen(url,timeout=60 )       
+    
