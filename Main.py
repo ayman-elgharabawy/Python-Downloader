@@ -38,7 +38,11 @@ logfile='downloader.log'
 ################################################################################################################################################	
 if __name__ == '__main__':
 
-
+    settings.proxyenable=False
+    settings.proxy_host='10.230.233.30'
+    settings.proxy_port='5110'
+    settings.proxy_username='mattia17'
+    settings.proxy_password='VodaPass18'
     settings.init()
     #Thread pool for handling the images links
     pool = ThreadPool(settings.no_thread_link)
