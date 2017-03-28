@@ -7,6 +7,8 @@ pip install retrying
 
 ##Algorithm:
 
+<img src='https://github.com/ayman-elgharabawy/Python-Downloader/blob/master/downloader-python.jpg' />
+
 <img src='https://github.com/ayman-elgharabawy/Python-Downloader/blob/master/Downloader.jpeg' />
 
 the program has pool of threads (4 threads) that handle the downloading Tasks for each link in the file
